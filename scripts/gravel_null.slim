@@ -1,0 +1,181 @@
+/// # Gravel Model in SLiM
+/// #### _(with Jump Menu annotations)_
+///
+
+initialize() {
+//defineConstant("d_repID", "1");
+//defineConstant("d_pop", "AFR");
+//defineConstant("d_mu_map", "fixed");
+//defineConstant("d_rr_map", "fixed");
+//defineConstant("d_bp_gen", 73400);
+
+    defineGlobal("start", clock()); 
+	 //Chromosome with 2 genes, each comprised of 9 1317bp exons, 8 1520bp introns, and separated by a 4322bp intergenic region
+    //Total chromosome length: 85005
+    defineConstant("N", 7310);
+    defineConstant("exonLength", 1317); //Ensembl data
+    defineConstant("exonsPerGene", 9); //Sakharkar et al. 2004
+    defineConstant("intronsPerGene", 8); //Sakharkar et al. 2004
+    defineConstant("intronLength", 1520); //Median length: Hube and Francastel (2015)
+    defineConstant("geneLength", (exonLength * exonsPerGene) + (intronLength * intronsPerGene));
+    defineConstant("intergenicLength", 4322); //Ensembl data
+    defineConstant("totalGenes", 3);
+    
+	//MUTATION RATE//
+	//fixed recombination rate (Nachman and Crowell 2000 average)
+	if (d_mu_map=='fixed')
+		{
+		mu = 2.5e-8;
+		initializeMutationRate(mu);
+		}
+	//variable rate (from input file)
+	else
+		{
+		lines = readFile(d_mu_map);
+	   mu = NULL;
+	   coords = NULL;
+	   for (line in lines)
+	   	{
+	      components = strsplit(line,"\t");
+	      coords = c(coords, asInteger(components[0]));
+	      mu = c(mu, asFloat(components[1]));
+	      }
+	   coords = c(coords[1:(size(coords)-1)] - 1, 85005);
+	   initializeMutationRate(mu, coords);
+	   }
+
+    
+    // mutation types:
+    //2Nes = [0, -1, -10, -100, -10000], s = [0.0, -0.0001, -0.001, -0.01, -1]
+    initializeMutationType("m1", 0.5, "f", 0.0); //selectively neutral
+    initializeMutationType("m2", 0.5, "s", "return runif(1, -10/(N*2), -1/(N*2));"); //weakly deleterious (1<2Nes<10)
+    initializeMutationType("m3", 0.5, "s", "return runif(1, -100/(N*2), -10/(N*2));"); //moderately deleterious (10<2Nes<100)
+    initializeMutationType("m4", 0.5, "s", "return runif(1, -1000/(N*2), -100/(N*2));"); //strongly deleterious (100<2Nes<1000)
+    // Genomic elements:
+    initializeGenomicElementType("g1", m1, 1.0); //intergenic
+    initializeGenomicElementType("g2", m1, 1.0); //intron
+    initializeGenomicElementType("g3", c(m1, m2, m3, m4), c(0.5, 0.2, 0.3, 0)); //exon
+    initializeGenomicElementType("g4", m1, 1.0); //exon synonymous
+    
+   //Initialise genomic element
+   //Chromosome with {totalGenes} no. ofgenes, each comprised of {exonsPerGene} {exonLength}bp exons;
+   //{intronsPerGene} {intronLength}bp introns, and separated by a {intergenicLength}bp intergenic region
+   //Loop through number of genes
+        for (gene in 1:totalGenes)
+                {
+                //Set gene start
+                geneStart = (gene-1) * (geneLength+intergenicLength) + 1;
+                //Loop through elements within gene (ie number of exons)
+                for (element in 1:exonsPerGene)
+                        {
+                        //Set exonStart and end coordinates
+                        exonStart = geneStart + (exonLength * (element-1)) + (intronLength * (element-1));
+                        exonEnd = exonStart+(exonLength-1);
+                        for (i in seq(exonStart, exonEnd-1, 3))
+                            {
+                            initializeGenomicElement(g3, i, i+1);
+                            initializeGenomicElement(g4, i+2, i+2);
+                            }
+                        //Each gene contains one less intron than exons
+                        if (element < exonsPerGene)
+                                {
+                                //Set intron coordinates
+                                intronStart = exonStart + exonLength;
+                                intronEnd = intronStart+(intronLength-1);
+                               initializeGenomicElement(g2, intronStart, intronEnd);
+                                }
+                        }
+                //Set intergenic region coordinates
+                intergenicStart = exonEnd + 1;
+                intergenicEnd = intergenicStart + (intergenicLength-1);
+                initializeGenomicElement(g1, intergenicStart, intergenicEnd);
+                }
+                
+	//RECOMBINATION RATE//
+	//fixed recombination rate (Payseur and Nachman 2000).
+	if (d_rr_map=='fixed')
+		{
+		rr = 1e-8;
+		initializeRecombinationRate(rr);
+		}
+	//variable rate (from input file - already adjusted for sex-average rate)
+	else
+		{
+		lines = readFile(d_rr_map);
+	   rr = NULL;
+	   coords = NULL;
+	   for (line in lines)
+	   	{
+	      components = strsplit(line,"\t");
+	      coords = c(coords, asInteger(components[0]));
+	      rr = c(rr, asFloat(components[1]));
+	      }
+	   rr = rr * 1e-8;
+	   coords = c(coords[1:(size(coords)-1)] - 1, 85005);
+	   initializeRecombinationRate(rr, coords);
+	   }
+   
+}
+
+///
+/// **Demography:**
+
+1 early() /* create p1 */ {
+	sim.addSubpop("p1", asInteger(round(7310.370867595234)));
+	defineConstant("simID",getSeed()); // get seed in case of re-run
+}
+
+73105 early() /* end burn-in */ {
+	p1.setSubpopulationSize(asInteger(round(14474.54608753566)));
+	
+}
+
+
+76968 early() /* split p2 from p1 */ {
+	sim.addSubpopSplit("p2", asInteger(round(1861.288190027689)), p1);
+	p1.setMigrationRates(c(p2), c(15.24422112e-5));
+	p2.setMigrationRates(c(p1), c(15.24422112e-5));
+}
+
+
+78084 early() /* split p3 from p2 */ {
+	sim.addSubpopSplit("p3", asInteger(round(553.8181989)), p2);
+	p2.setSubpopulationSize(asInteger(round(1032.1046957333444)));
+
+	p1.setMigrationRates(c(p2, p3), c(2.54332678e-5, 0.7770583877e-5));
+	p2.setMigrationRates(c(p1, p3), c(2.54332678e-5, 3.115817913e-5));
+	p3.setMigrationRates(c(p1, p2), c(0.7770583877e-5, 3.115817913e-5));
+}
+
+
+
+78084:79024 early() /* exponential growth */ {
+	t = sim.cycle - 78084;
+	p2_size = round(1032.1046957333444 * (1 + 0.003784324268)^t);
+	p3_size = round(553.8181989 * (1 + 0.004780219543)^t);
+	
+	p2.setSubpopulationSize(asInteger(p2_size));
+	p3.setSubpopulationSize(asInteger(p3_size));
+}
+
+
+
+/***/
+/** **Final output:** */
+
+79024 late() {
+	//p1.outputSample(216);
+	//p2.outputSample(198);
+	//p3.outputSample(206);
+	
+	
+   print("Peak Mem Usage: " + usage(peak = T));
+   print("Runtime: " + (clock()-start));
+   p1.outputMSSample(100, F, "*", d_folder + "/AFR_rep" + d_repID + "_null.ms", F);
+   p2.outputMSSample(100, F, "*", d_folder + "/EUR_rep" + d_repID + "_null.ms", F);
+   p3.outputMSSample(100, F, "*", d_folder + "/EAS_rep" + d_repID + "_null.ms", F);
+
+   //print all fixed mutations
+   sim.outputFixedMutations(d_folder + "/rep" + d_repID + "_null.fixed", append=F);
+}
+
