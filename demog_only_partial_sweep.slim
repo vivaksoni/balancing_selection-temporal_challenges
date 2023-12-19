@@ -1,0 +1,105 @@
+// simulate sequences with actual nucleotides
+
+initialize() {
+    defineGlobal("start", clock());
+	 defineConstant("scale", 1);
+    defineConstant("N", asInteger(10000 / scale));
+	 //defineConstant("var_age", 1000);
+    defineConstant("L", 50000);
+    
+    defineConstant("burnIn", asInteger(10 * N)); // Length of burnin. BP is introduced immediately after burnin. (in N gens)
+
+    defineConstant("simEnd", asInteger(100 * N) + burnIn); //Final sampling time is 100N generations after BP is introduced.
+    initializeMutationType("m1", 0.5, "f", 0.0);
+    initializeMutationType("m0", 1, "f", d_bp_Nes/(N*2));
+    initializeMutationRate(2.5e-8 * scale);
+    initializeGenomicElementType("g1", m1, 1.0); ///NS
+    initializeGenomicElementType("g2", m1, 1.0); //S
+    
+    for (i in seq(0, L-1, 3))
+    {
+		  initializeGenomicElement(g1, i, i+1);
+        initializeGenomicElement(g2, i+2, i+2);
+    }
+    initializeRecombinationRate(1e-8 * scale); // 1e-8 scaled by 100
+}
+
+1 early() {
+    defineConstant("simID",getSeed()); // get seed in case of re-run
+    sim.addSubpop("p1", N); // 
+}
+
+
+10000 late() {
+    print('Burnin complete.');
+    print("Peak Mem Usage: " + usage(peak = T));
+	 print("Runtime: " + (clock()-start));
+	 print('--------------------------------------------------------------');
+	// save the state of the simulation
+	sim.outputFull("/home/vivak/balancing_selection/states/slim_" + d_repID + ".txt");
+	
+	// introduce the sweep mutation
+	target = sample(p1.genomes, 1);
+	target.addNewDrawnMutation(m0, 25000);
+}
+
+
+10000:20000 late()
+{
+
+	mut = sim.mutationsOfType(m0);
+	
+	if (size(mut) == 1)
+	{
+		if (sim.mutationFrequencies(NULL, mut) >= 0.5)
+		{
+
+			print("Peak Mem Usage: " + usage(peak = T));
+			print("Runtime: " + (clock()-start));
+			print(size(p1.individuals));
+			
+	   p1.outputMSSample(100, F, "*", d_folder + "/hSap_rep" + d_repID + "_" + d_bp_Nes + ".ms", F);
+
+   //print all fixed mutations
+   sim.outputFixedMutations(d_folder + "/hSap_rep" + d_repID + "_" + d_bp_Nes + ".fixed", append=F);
+   m0muts = sim.mutationsOfType(m0);
+   sim.outputMutations(m0muts, d_folder + "/hSap_rep" + d_repID + "_" + d_bp_Nes + ".bs", append=F);
+	print("Beneficial mutation has reached AF>0.5. Files output.");
+   print("Total Runtime: " + (clock()-start));
+   sim.simulationFinished();
+
+			
+
+		}
+	}
+	else if (sim.countOfMutationsOfType(m0) == 0)
+	{
+		fixed = (sum(sim.substitutions.mutationType == m0) == 1);
+		
+		
+		if (fixed)
+		{
+			print("Default output");
+			print("Peak Mem Usage: " + usage(peak = T));
+			print("Runtime: " + (clock()-start));
+			print(size(p1.individuals));
+			print("Default output completed. Ending simulation now...");
+			print("Total Runtime: " + (clock()-start));
+			
+		}
+		else
+		{
+			print(simID + ": LOST - RESTARTING\n");
+			
+			// go back to generation 1000
+			sim.readFromPopulationFile("/home/vivak/balancing_selection/states/slim_" + d_repID + ".txt");
+			
+			// start a newly seeded run
+			setSeed(rdunif(1, 0, asInteger(2^62) - 1));
+			
+			// re-introduce the sweep mutation
+			target = sample(p1.individuals.genomes, 1);
+			target.addNewDrawnMutation(m0, 25000);
+		}
+	}
+}
