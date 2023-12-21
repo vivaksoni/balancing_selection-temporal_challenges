@@ -16,3 +16,4 @@ SIMULATION_README.txt for instructions on running SLiM simulations.
 B2_README.txt for instructions on generating B2 input files and running balancing selection inference.
 iHS_README.txt for instructions on generating iHS input files and running balancing selection inference.
 SUMMARY_STATS_README.txt for instructions on generating summary stats from SLiM outputs.
+balancing_selection_plot_results.ipynb for juupyter script to plot all figures.
