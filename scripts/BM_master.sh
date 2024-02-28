@@ -68,14 +68,8 @@ echo "completed"
 
 #####GENERATE SFS FILES#####
 echo "Generating sfs files. Output to $BMinputPath"
-#B0
-#python3 BalLeRMix+_v1.py -i "$BMinputPath"_"$sampling_time".input --noSub --getSpect --spect "$BMinputPath"_"$sampling_time"_B0.sfs
-#B0maf
-#python3 BalLeRMix+_v1.py -i "$BMinputPath"_"$sampling_time".input --noSub --MAF --getSpect --spect "$BMinputPath"_"$sampling_time"_B0maf.sfs
-#B1
-#python3 BalLeRMix+_v1.py -i "$BMinputPath"_"$sampling_time".input --getConfig --spect "$BMinputPath"_"$sampling_time"_B1.sfs
+
 #B2
 python3 BalLeRMix+_v1.py -i "$BMinputPath"_"$sampling_time".input --getSpect --spect "$BMinputPath"_"$sampling_time"_B2.sfs
-#B2maf
-#python3 BalLeRMix+_v1.py -i "$BMinputPath"_"$sampling_time".input --MAF --getSpect --spect "$BMinputPath"_"$sampling_time"_B2maf.sfs
+
 echo "completed."
