@@ -11,6 +11,11 @@ script is required to run B2 method, and is from Cheng and DeGiorgio 2020.
 
 Mutation and recombination rate maps are contained in zip folders. Script to generate maps is included in scripts/variable rates.
 
+eq_sims.tar.gz contains SLiM output files for equilibrium neutral fixed rate simulations.
+
+eq_sims_BM.tar.gz contains input and output files for B2 analysis of equilibrium neutral fixed rate simulations.
+
+eq_sims_ihs.tar.gz contains input and output files for ihs analysis of equilibrium neutral fixed rate simulations.
 
 Within Scripts folder see:
 
